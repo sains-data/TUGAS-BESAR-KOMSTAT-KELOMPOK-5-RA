@@ -1,1 +1,169 @@
+#memanggil Dataset yang sudah disediakan
+data_sekolah <- read.csv("/content/JPM dan Jumlah Sekolah.csv")
 
+str(data_sekolah)
+head(data_sekolah)
+
+# Menentukan ukuran sampel
+n_total <- nrow(data_sekolah)
+sample_size <- floor(n_total * 0.5) # Misalnya, ambil 50% dari total data
+
+# Melakukan sampling acak tanpa pengulangan
+set.seed(123)
+sampled_indices <- sample(1:n_total, size = sample_size, replace = FALSE)
+data_sampled <- data_sekolah[sampled_indices, ]
+
+cat("Jumlah Observasi Asli:", n_total, "\n")
+cat("Jumlah Observasi Sampel:", nrow(data_sampled), "\n")
+cat("Data Sampel:", "\n")
+print(data_sampled)
+
+# Menentukan ukuran sampel (bisa sama dengan total observasi atau lebih besar/kecil)
+n_total <- nrow(data_sekolah)
+sample_size_with_replacement <- floor(n_total * 0.5) 
+
+# Melakukan sampling acak dengan pengulangan
+set.seed(456)
+sampled_indices_with_replacement <- sample(1:n_total, size = sample_size_with_replacement, replace = TRUE)
+data_sampled_with_replacement <- data_sekolah[sampled_indices_with_replacement, ]
+
+cat("Jumlah Observasi Asli:", n_total, "\n")
+cat("Jumlah Observasi Sampel (dengan pengulangan):", nrow(data_sampled_with_replacement), "\n")
+cat("Data Sampel (dengan pengulangan):", "\n")
+print(data_sampled_with_replacement)
+
+# Fungsi Jackknife Manual untuk menghitung median dan SE
+jackknife_median_analysis <- function(data) {
+  n <- length(data)
+  theta_full <- median(data, na.rm = TRUE) 
+  theta_jack_i <- numeric(n) 
+
+  # Perulangan untuk setiap subsampel (menghilangkan satu data pada setiap iterasi)
+  for (i in 1:n) {
+    subsample <- data[-i] 
+    theta_jack_i[i] <- median(subsample, na.rm = TRUE)
+  }
+
+  # Rata-rata dari estimasi leave-one-out (Theta dot)
+  theta_dot <- mean(theta_jack_i, na.rm = TRUE)
+
+  # Estimasi Bias Jackknife
+  bias_jack <- (n - 1) * (theta_dot - theta_full)
+
+  # Estimasi Varians Jackknife
+  var_jack <- ((n - 1) / n) * sum((theta_jack_i - theta_dot)^2, na.rm = TRUE)
+
+  # Estimasi Standar Error (SE) Jackknife
+  se_jack <- sqrt(var_jack)
+
+  return(list(
+    median_full = theta_full,
+    bias_estimate = bias_jack,
+    std_error = se_jack,
+    jackknife_values = theta_jack_i
+  ))
+}
+
+hasil_jackknife_median <- jackknife_median_analysis(data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa.)
+cat("--- Hasil Analisis Jackknife Median ---\n")
+cat("Median Sampel Penuh: ", hasil_jackknife_median$median_full, "\n")
+cat("Estimasi Bias Jackknife (Median): ", hasil_jackknife_median$bias_estimate, "\n")
+cat("Standard Error Jackknife (Median): ", hasil_jackknife_median$std_error, "\n")
+cat("Nilai Jackknife (Leave-one-out Medians): ", head(hasil_jackknife_median$jackknife_values), "... (hanya menampilkan 6 pertama)\n")
+
+# Fungsi Jackknife Manual untuk menghitung rata-rata dan SE
+jackknife_analysis <- function(data) {
+  n <- length(data)
+  theta_full <- mean(data, na.rm = TRUE) 
+  theta_i <- numeric(n) 
+
+  # Perulangan untuk setiap subsampel (menghilangkan satu data pada setiap iterasi)
+  for (i in 1:n) {
+    subsample <- data[-i] 
+    theta_i[i] <- mean(subsample, na.rm = TRUE) 
+  }
+
+  # Rata-rata dari estimasi leave-one-out (Theta dot)
+  theta_dot <- mean(theta_i, na.rm = TRUE)
+
+  # Estimasi Bias Jackknife
+  bias_jack <- (n - 1) * (theta_dot - theta_full)
+
+  # Estimasi Varians Jackknife
+  var_jack <- ((n - 1) / n) * sum((theta_i - theta_dot)^2, na.rm = TRUE)
+
+  # Estimasi Standar Error (SE) Jackknife
+  se_jack <- sqrt(var_jack)
+
+  return(list(
+    mean_full = theta_full,
+    bias_estimate = bias_jack,
+    std_error = se_jack,
+    jackknife_values = theta_i
+  ))
+}
+
+# Jalankan fungsi pada kolom numerik yang Anda inginkan (misalnya, JPM)
+hasil_jackknife_mean <- jackknife_analysis(data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa.)
+cat("--- Hasil Analisis Jackknife Mean ---\n")
+cat("Mean Sampel Penuh: ", hasil_jackknife_mean$mean_full, "\n")
+cat("Estimasi Bias Jackknife (Mean): ", hasil_jackknife_mean$bias_estimate, "\n")
+cat("Standard Error Jackknife (Mean): ", hasil_jackknife_mean$std_error, "\n")
+cat("Nilai Jackknife (Leave-one-out Means): ", head(hasil_jackknife_mean$jackknife_values), "... (hanya menampilkan 6 pertama)\n")
+
+n <- nrow(data_sekolah) 
+
+# Mendefiniskan variabel dalam corelasi 
+var_x <- "Jumlah.Penduduk.Miskin..ribu.jiwa."
+var_y <- "Jumlah.Sekolah"
+
+theta_full <- cor(data_sekolah[[var_x]], data_sekolah[[var_y]], method = "pearson")
+
+cat("--- Hasil Sampel Penuh ---\n")
+cat("Jumlah Observasi (n):", n, "\n")
+cat("Korelasi Pearson (Theta Full):", theta_full, "\n\n")
+
+# melihat rata rata dan median dari jumlah penduduk
+mean_jpm <- mean(data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa., na.rm = TRUE)
+median_jpm <- median(data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa., na.rm = TRUE)
+
+cat("Mean Jumlah Penduduk Miskin: ", mean_jpm, "\n")
+cat("Median Jumlah Penduduk Miskin: ", median_jpm, "\n")
+
+#scater plot 
+plot(data_sekolah[[var_x]], data_sekolah[[var_y]], 
+     main = paste("Scatter Plot", var_x, "vs", var_y),
+     xlab = var_x,
+     ylab = var_y,
+     pch = 19, col = "blue")
+
+# Menambahkan garis regresi 
+abline(lm(data_sekolah[[var_y]] ~ data_sekolah[[var_x]]), col = "red", lwd = 2)
+
+#histogram 
+hist(data_sekolah[[var_x]], 
+     main = "Hist. Penduduk Miskin",
+     xlab = "Ribu Jiwa", 
+     col = "skyblue", 
+     border = "white")
+
+# Histogram Variabel Y
+hist(data_sekolah[[var_y]], 
+     main = "Hist. Jumlah Sekolah",
+     xlab = "Unit Sekolah", 
+     col = "lightgreen", 
+     border = "white")
+
+# Mengembalikan pengaturan plot ke normal (1 kolom)
+par(mfrow = c(1, 1))
+
+# barplot pada jumlah penduduk yang ada di lampung
+data_sekolah_sorted <- data_sekolah[order(data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa., decreasing = TRUE), ]
+par(mar = c(8, 4, 4, 2) + 0.1) 
+barplot(data_sekolah_sorted$Jumlah.Penduduk.Miskin..ribu.jiwa.,
+        names.arg = data_sekolah_sorted$Wilayah,
+        main = "Jumlah Penduduk Miskin per Wilayah",
+        ylab = "Jumlah Penduduk Miskin (ribu jiwa)",
+        col = "skyblue",
+        las = 2) 
+par(mar = c(5, 4, 4, 2) + 0.1) 
