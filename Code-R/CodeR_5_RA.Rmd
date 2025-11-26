@@ -1,0 +1,366 @@
+---
+title: "Tugas Besar Komstat"
+author: "TUBES"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+data_sekolah <- read.csv("D:/Dataset_TUBES/JPM dan Jumlah Sekolah.csv")
+```
+
+```{r}
+str(data_sekolah)
+```
+
+```{r}
+head(data_sekolah)
+```
+
+```{r}
+n_total <- nrow(data_sekolah)
+sample_size <- floor(n_total * 0.5) # Misalnya ambil 50% data
+```
+
+```{r}
+set.seed(123)
+sampled_indices <- sample(1:n_total, size = sample_size, replace = FALSE)
+data_sampled <- data_sekolah[sampled_indices, ]
+
+cat("Jumlah Observasi Asli:", n_total, "\n")
+cat("Jumlah Observasi Sampel:", nrow(data_sampled), "\n")
+print(data_sampled)
+```
+
+```{r}
+# Sampling acak dengan pengulangan
+sample_size_with_replacement <- floor(n_total * 0.5)
+
+set.seed(456)
+sampled_indices_with_replacement <- sample(1:n_total,
+                                           size = sample_size_with_replacement,
+                                           replace = TRUE)
+data_sampled_with_replacement <- data_sekolah[sampled_indices_with_replacement, ]
+
+cat("Jumlah Observasi Asli:", n_total, "\n")
+cat("Jumlah Observasi Sampel (dengan pengulangan):",
+    nrow(data_sampled_with_replacement), "\n")
+print(data_sampled_with_replacement)
+```
+
+```{r}
+# Fungsi Jackknife Manual (Mean)
+jackknife_analysis <- function(data) {
+  n <- length(data)
+  theta_full <- mean(data, na.rm = TRUE)
+  theta_i <- numeric(n)
+
+  for (i in 1:n) {
+    subsample <- data[-i]
+    theta_i[i] <- mean(subsample, na.rm = TRUE)
+  }
+
+  theta_dot <- mean(theta_i, na.rm = TRUE)
+  bias_jack <- (n - 1) * (theta_dot - theta_full)
+  var_jack <- ((n - 1) / n) * sum((theta_i - theta_dot)^2, na.rm = TRUE)
+  se_jack <- sqrt(var_jack)
+
+  return(list(
+    mean_full = theta_full,
+    bias_estimate = bias_jack,
+    std_error = se_jack,
+    jackknife_values = theta_i
+  ))
+}
+
+hasil_jackknife_mean <- jackknife_analysis(
+  data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa.
+)
+
+cat("--- Hasil Analisis Jackknife Mean ---\n")
+cat("Mean Sampel Penuh: ", hasil_jackknife_mean$mean_full, "\n")
+cat("Estimasi Bias Jackknife (Mean): ", hasil_jackknife_mean$bias_estimate, "\n")
+cat("Standard Error Jackknife (Mean): ", hasil_jackknife_mean$std_error, "\n")
+cat("Nilai Jackknife (6 pertama): ", head(hasil_jackknife_mean$jackknife_values), "\n")
+```
+
+```{r}
+# Fungsi Jackknife Manual (Median)
+jackknife_median_analysis <- function(data) {
+  n <- length(data)
+  theta_full <- median(data, na.rm = TRUE)
+  theta_jack_i <- numeric(n)
+
+  for (i in 1:n) {
+    subsample <- data[-i]
+    theta_jack_i[i] <- median(subsample, na.rm = TRUE)
+  }
+
+  theta_dot <- mean(theta_jack_i, na.rm = TRUE)
+  bias_jack <- (n - 1) * (theta_dot - theta_full)
+  var_jack <- ((n - 1) / n) * sum((theta_jack_i - theta_dot)^2, na.rm = TRUE)
+  se_jack <- sqrt(var_jack)
+
+  return(list(
+    median_full = theta_full,
+    bias_estimate = bias_jack,
+    std_error = se_jack,
+    jackknife_values = theta_jack_i
+  ))
+}
+
+hasil_jackknife_median <- jackknife_median_analysis(
+  data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa.
+)
+
+cat("--- Hasil Analisis Jackknife Median ---\n")
+cat("Median Sampel Penuh: ", hasil_jackknife_median$median_full, "\n")
+cat("Estimasi Bias Jackknife (Median): ", hasil_jackknife_median$bias_estimate, "\n")
+cat("Standard Error Jackknife (Median): ", hasil_jackknife_median$std_error, "\n")
+cat("Nilai Jackknife (6 pertama): ", head(hasil_jackknife_median$jackknife_values), "\n")
+```
+
+```{r}
+# Korelasi Pearson
+n <- nrow(data_sekolah)
+var_x <- "Jumlah.Penduduk.Miskin..ribu.jiwa."
+var_y <- "Jumlah.Sekolah"
+
+theta_full <- cor(data_sekolah[[var_x]], data_sekolah[[var_y]], method = "pearson")
+
+cat("--- Hasil Sampel Penuh ---\n")
+cat("Jumlah Observasi (n):", n, "\n")
+cat("Korelasi Pearson:", theta_full, "\n\n")
+```
+
+```{r}
+mean_jpm <- mean(data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa., na.rm = TRUE)
+median_jpm <- median(data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa., na.rm = TRUE)
+
+cat("Mean Jumlah Penduduk Miskin: ", mean_jpm, "\n")
+cat("Median Jumlah Penduduk Miskin: ", median_jpm, "\n")
+```
+
+```{r}
+plot(data_sekolah[[var_x]], data_sekolah[[var_y]],
+     main = paste("Scatter Plot", var_x, "vs", var_y),
+     xlab = var_x, ylab = var_y,
+     pch = 19, col = "blue")
+
+abline(lm(data_sekolah[[var_y]] ~ data_sekolah[[var_x]]),
+       col = "red", lwd = 2)
+```
+
+```{r}
+# Histogram Penduduk Miskin
+hist(data_sekolah[[var_x]],
+     main = "Hist. Penduduk Miskin",
+     xlab = "Ribu Jiwa",
+     col = "skyblue",
+     border = "white")
+
+# Histogram Jumlah Sekolah
+hist(data_sekolah[[var_y]],
+     main = "Hist. Jumlah Sekolah",
+     xlab = "Unit Sekolah",
+     col = "lightgreen",
+     border = "white")
+```
+
+```{r}
+# Barplot
+data_sekolah_sorted <- data_sekolah[order(
+  data_sekolah$Jumlah.Penduduk.Miskin..ribu.jiwa.,
+  decreasing = TRUE
+), ]
+
+par(mar = c(8, 4, 4, 2) + 0.1)
+barplot(data_sekolah_sorted$Jumlah.Penduduk.Miskin..ribu.jiwa.,
+        names.arg = data_sekolah_sorted$Wilayah,
+        main = "Jumlah Penduduk Miskin per Wilayah",
+        ylab = "Ribu Jiwa",
+        col = "skyblue",
+        las = 2)
+par(mar = c(5, 4, 4, 2) + 0.1)
+```
+
+```{r}
+ggplot(data_sekolah, aes(x = Jumlah.Penduduk.Miskin..ribu.jiwa., y = reorder(Wilayah, Jumlah.Penduduk.Miskin..ribu.jiwa.))) +
+  geom_col(fill = "darkorange") +
+  labs(title = "Jumlah Penduduk Miskin per Kabupaten/Kota di Provinsi Lampung",
+       x = "Jumlah Penduduk Miskin (ribu jiwa)",
+       y = "Wilayah") +
+  theme_minimal()
+```
+
+```{r}
+# Bar Plot Jumlah Sekolah per Wilayah
+ggplot(data_sekolah, aes(x = reorder(Wilayah, Jumlah.Sekolah), y = Jumlah.Sekolah)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Jumlah Sekolah per Kabupaten/Kota di Provinsi Lampung",
+       x = "Wilayah",
+       y = "Jumlah Sekolah") +
+  theme_minimal()
+```
+
+```{r}
+n <- nrow(data_sekolah)
+
+# Model regresi penuh untuk mendapatkan beta1_full
+model_full <- lm(Jumlah.Sekolah ~ Jumlah.Penduduk.Miskin..ribu.jiwa., data = data_sekolah)
+beta1_full <- coef(model_full)[2]
+
+beta1_jack <- numeric(n)
+
+for (i in 1:n) {
+  # Model regresi tanpa observasi ke-i (Leave-One-Out)
+  model_loo <- lm(Jumlah.Sekolah ~ Jumlah.Penduduk.Miskin..ribu.jiwa., data = data_sekolah[-i, ])
+  beta1_jack[i] <- coef(model_loo)[2]
+}
+
+# Tabel iterasi beta1
+cat("\n--- Iterasi Jackknife Beta1 (Koefisien Regresi) ---\n")
+print(data.frame(No = 1:n, Hapus = data_sekolah$Wilayah,
+                  Beta1 = round(beta1_jack, 6)))
+
+# Pseudovalue beta1
+pseudo_b1 <- n * beta1_full - (n - 1) * beta1_jack
+
+# Estimasi Jackknife
+beta1_jack_est <- mean(pseudo_b1)
+
+# Variansi & SE
+var_b1_jack <- var(pseudo_b1) / n
+se_b1_jack <- sqrt(var_b1_jack)
+
+# Bias Jackknife
+bias_b1 <- (n - 1) * (mean(beta1_jack) - beta1_full)
+
+# CI 95%
+ci_b1_lower <- beta1_jack_est - 1.96 * se_b1_jack
+ci_b1_upper <- beta1_jack_est + 1.96 * se_b1_jack
+
+cat("\n--- Hasil Analisis Jackknife Regresi Beta1 ---\n")
+cat("Beta1 Full Model: ", beta1_full, "\n")
+cat("Estimasi Jackknife Beta1: ", beta1_jack_est, "\n")
+cat("Bias Jackknife Beta1: ", bias_b1, "\n")
+cat("Standard Error Jackknife Beta1: ", se_b1_jack, "\n")
+cat("Interval Kepercayaan 95% untuk Beta1: (", ci_b1_lower, ", ", ci_b1_upper, ")\n")
+```
+
+```{r}
+n <- nrow(data_sekolah)
+var_x <- "Jumlah.Penduduk.Miskin..ribu.jiwa."
+var_y <- "Jumlah.Sekolah"
+
+# Full sample correlation (r_full)
+r_full <- cor(data_sekolah[[var_x]], data_sekolah[[var_y]], method = "pearson")
+
+# Jackknife for Correlation
+r_jack_i <- numeric(n)
+
+for (i in 1:n) {
+  subsample_x <- data_sekolah[[var_x]][-i]
+  subsample_y <- data_sekolah[[var_y]][-i]
+  r_jack_i[i] <- cor(subsample_x, subsample_y, method = "pearson")
+}
+
+# Pseudovalues
+pseudo_r <- n * r_full - (n - 1) * r_jack_i
+
+# Jackknife Estimate
+r_jack_est <- mean(pseudo_r)
+
+# Jackknife Standard Error
+var_r_jack <- var(pseudo_r) / n
+se_r_jack <- sqrt(var_r_jack)
+
+# Jackknife Bias
+bias_r_jack <- (n - 1) * (mean(r_jack_i) - r_full)
+
+# Jackknife 95% CI
+ci_r_lower <- r_jack_est - 1.96 * se_r_jack
+ci_r_upper <- r_jack_est + 1.96 * se_r_jack
+
+cat("\n--- Hasil Analisis Jackknife Korelasi Pearson ---\n")
+cat("Korelasi Penuh (r_full): ", r_full, "\n")
+cat("Estimasi Jackknife Korelasi: ", r_jack_est, "\n")
+cat("Bias Jackknife Korelasi: ", bias_r_jack, "\n")
+cat("Standard Error Jackknife Korelasi: ", se_r_jack, "\n")
+cat("Interval Kepercayaan 95% untuk Korelasi: (", ci_r_lower, ", ", ci_r_upper, ")\n")
+
+# SE konvensional korelasi (approx normal)
+se_r_conv <- (1 - r_full^2) / sqrt(n)
+
+# Fisher Z transformation untuk CI Korelasi Konvensional
+z <- 0.5 * log((1 + r_full) / (1 - r_full))
+sigma_z <- 1 / sqrt(n - 3)
+
+z_low <- z - 1.96 * sigma_z
+z_up <- z + 1.96 * sigma_z
+
+# Back transform Z ke r
+ci_r_conv_low <- (exp(2 * z_low) - 1) / (exp(2 * z_low) + 1)
+ci_r_conv_up <- (exp(2 * z_up) - 1) / (exp(2 * z_up) + 1)
+
+# Output perbandingan
+cat("\n================ PERBANDINGAN METODE ================\n")
+comparison <- data.frame(
+  Metode = c("Konvensional", "Jackknife"),
+  Estimasi_Korelasi = c(r_full, r_jack_est),
+  SE = c(se_r_conv, se_r_jack),
+  CI_95_Lower = c(ci_r_conv_low, ci_r_lower),
+  CI_95_Upper = c(ci_r_conv_up, ci_r_upper)
+)
+
+print(comparison)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+
